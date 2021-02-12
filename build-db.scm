@@ -35,22 +35,13 @@
       (newline)
       ;; which os?
       (if (string=? (vector-ref (uname) 0) "Linux")
-          (system (string-append
-                   "unzip"
-                   " "
-                   "-q"
-                   " "
-                   poem-archive-filepath
-                   " "
-                   "-d"
-                   " "
-                   tmp-dir))
+          (system (format #f "unzip -q ~a -d ~a" poem-archive-filepath tmp-dir))
           (begin
             (display "win32 or macos are not supported currently.\n")
             (quit)))))
 
 ;;;; insert poems to db
-;; delete db first
+;; delete old db
 (if (access? poem-db-path F_OK)
     (delete-file poem-db-path))
 
