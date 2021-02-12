@@ -37,6 +37,7 @@
       (if (string=? (vector-ref (uname) 0) "Linux")
           (system (string-append
                    "unzip"
+                   " "
                    "-q"
                    " "
                    poem-archive-filepath
