@@ -1,6 +1,6 @@
 #include <stdio.h>
+#include <string.h>
 #include <sqlite3.h>
-#include <libguile.h>
 #include <json-c/json.h>
 
 struct poem {
@@ -10,8 +10,7 @@ struct poem {
 };
 
 int loop_poem_and_insert(json_object*, const char*);
-SCM read_poem_2_db(SCM, SCM);
-void init_poem_db_helper();
+int read_poem_2_db(const char*, const char*);
 int insert_single_poem(sqlite3*, struct poem*);
 static int callback(void*, int, char**, char**);
 char* build_insert_sql(struct poem*);
@@ -25,7 +24,7 @@ static int callback(void *NotUsed, int argc, char **argv, char **azColName){
   return 0;
 }
 
-SCM read_poem_2_db(SCM scm_jsonpath, SCM scm_dbpath) {
+int read_poem_2_db(const char* jsonpath, const char* dbpath) {
   /* char* is a mutable pointer to a mutable character/string. */
 
   /* const char* is a mutable pointer to an immutable character/string. */
@@ -37,18 +36,12 @@ SCM read_poem_2_db(SCM scm_jsonpath, SCM scm_dbpath) {
   /* but the contents of location at which it points are mutable. */
 
   /* const char* const is an immutable pointer to an immutable character/string. */    
-  const char *json_path = scm_to_locale_string(scm_jsonpath);
-  const char *db_path = scm_to_locale_string(scm_dbpath);
-  json_object* root = json_object_from_file(json_path);
+  json_object* root = json_object_from_file(jsonpath);
 
-  int poem_count = loop_poem_and_insert(root, db_path);
+  int poem_count = loop_poem_and_insert(root, dbpath);
   
   json_object_put(root);
-  return scm_from_int(poem_count);
-}
-
-void init_poem_db_helper() {
-  scm_c_define_gsubr("poem-json2db", 2, 0, 0, read_poem_2_db);
+  return poem_count;
 }
 
 int loop_poem_and_insert(json_object* root, const char* db_path) {

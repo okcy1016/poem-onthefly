@@ -4,15 +4,14 @@
 #include <stdlib.h>
 #include <unistd.h> 
 #include <curl/curl.h>
-#include <libguile.h>
- 
+
 static size_t write_data(void *ptr, size_t size, size_t nmemb, void *stream)
 {
   size_t written = fwrite(ptr, size, nmemb, (FILE *)stream);
   return written;
 }
  
-int download_peom_archive(const char *uri, const char *filepath)
+int download_poem_archive(const char *uri, const char *filepath)
 {
   CURL *curl_handle;
   const char *pagefilename = filepath;
@@ -63,13 +62,4 @@ int download_peom_archive(const char *uri, const char *filepath)
   curl_global_cleanup();
  
   return 0;
-}
-
-SCM download_peom_archive_wrapper(SCM uri, SCM filepath) {
-  download_peom_archive(scm_to_locale_string(uri), scm_to_locale_string(filepath));
-  return scm_from_int(0);
-}
-
-void init_poem_net_helper() {
-  scm_c_define_gsubr("poem-download-archive", 2, 0, 0, download_peom_archive_wrapper);
 }

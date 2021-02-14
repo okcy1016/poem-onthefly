@@ -2,59 +2,120 @@
 (define tmp-dir "./tmp")
 (define poem-archive-filepath "./tmp/chinese-poetry-master.zip")
 (define poem-db-path "./poems.db")
+(define poem-tang-json-dir (string-append
+                            tmp-dir
+                            "/chinese-poetry-master/json"))
+(define poem-songci-json-dir (string-append
+                              tmp-dir
+                              "/chinese-poetry-master/ci"))
 
-(define get-poet-tang-filename-list
-  (lambda (dir)
-    (use-modules (ice-9 ftw))
-    (let ((filenames-in-dir (scandir dir)))
+(define string-prefix?
+  (lambda (x y)
+    (let ([n (string-length x)])
+      (and (fx<= n (string-length y))
+           (let prefix? ([i 0])
+             (or (fx= i n)
+                 (and (char=? (string-ref x i) (string-ref y i))
+                      (prefix? (fx+ i 1)))))))))
+
+(define get-poet-filename-list
+  (lambda (type)
+    (let ([filenames-in-dir (directory-list
+                             (case type
+                               ["tang" poem-tang-json-dir]
+                               ["songci" poem-songci-json-dir]))]
+          [filename-prefix (case type
+                             ["tang" "poet.tang"]
+                             ["songci" "ci.song"])])
       (filter (lambda (item)
-                (string-prefix? "poet.tang" item))
+                (string-prefix? filename-prefix item))
               filenames-in-dir))))
 
-(define get-poet-tang-filepath-list
-  (lambda (dir)
-    (let ((poet-tang-filename-list (get-poet-tang-filename-list dir)))
+(define get-poet-filepath-list
+  (lambda (type)
+    (let ([poet-filename-list (get-poet-filename-list type)]
+          [dir (case type
+                 ["tang" poem-tang-json-dir]
+                 ["songci" poem-songci-json-dir])])
       (map
-       (lambda (dir filename) (string-append dir filename))
-       (make-list (length poet-tang-filename-list) dir)
-       poet-tang-filename-list))))
+       (lambda (dir filename) (string-append dir "/" filename))
+       (make-list (length poet-filename-list) dir)
+       poet-filename-list))))
 
-;; create tmp dir if not exists
-(if (not (access? tmp-dir F_OK))
-    (mkdir tmp-dir))
+(define create-tmp-dir
+  (lambda ()
+    ;; create tmp dir if not exists
+    (if (not (file-exists? tmp-dir))
+        (mkdir tmp-dir))))
 
-;; download poem if not exists
-(if (not (access? poem-archive-filepath F_OK))
-    (begin
-      (display "first time use, downloading poems from GitHub ...")
-      (newline)
-      (load-extension "./net-helper" "init_poem_net_helper")
-      (poem-download-archive poem-archive-uri poem-archive-filepath)
-      ;; extract archive
-      (display "extracting archive ...")
-      (newline)
-      ;; which os?
-      (if (string=? (vector-ref (uname) 0) "Linux")
-          (system (format #f "unzip -q ~a -d ~a" poem-archive-filepath tmp-dir))
-          (begin
-            (display "win32 or macos are not supported currently.\n")
-            (quit)))))
+(load-shared-object "./net-helper.so")
+(define poem-download-archive
+  (foreign-procedure "download_poem_archive" (string string) int))
 
-;;;; insert poems to db
-;; delete old db
-(if (access? poem-db-path F_OK)
-    (delete-file poem-db-path))
+(load-shared-object "./db-helper.so")
+(define poem-json2db
+  (foreign-procedure "read_poem_2_db" (string string) int))
 
-(load-extension "./db-helper" "init_poem_db_helper")
-(use-modules (ice-9 format))
-(for-each
- (lambda (elem)
-   (display
-    (format
-     #f
-     "~d poems inserted from ~a\n"
-     (poem-json2db elem poem-db-path)
-     elem)))
- (get-poet-tang-filepath-list "./tmp/chinese-poetry-master/json/"))
+(define os-type
+  (lambda ()
+    (case (machine-type)
+      [(i3le ti3le a6le ta6le) "linux"]
+      [(i3osx ti3osx a6osx ta6osx) "macos"]
+      [(i3nt ti3nt a6nt ta6nt) "windows"]
+      [else "unknown"])))
 
-(display (format #f "generated ~a\n" poem-db-path))
+(define download-poem-archive
+  (lambda ()
+    ;; download poem if not exists
+    (if (not (file-exists? poem-archive-filepath))
+        (begin
+          (display "first time use, downloading poems from GitHub ...")
+          (newline)
+          (poem-download-archive poem-archive-uri poem-archive-filepath)
+          ;; extract archive
+          (display "extracting archive ...")
+          (newline)
+          ;; `ta6le` -> x86-64 linux; `nt` -> windows
+          (if (string=? (os-type) "linux")
+              (system (format #f "unzip -q ~a -d ~a" poem-archive-filepath tmp-dir))
+              (begin
+                (display "win32 or macos are not supported currently.\n")
+                (exit)))))))
+
+(define generate-db
+  (lambda ()
+    ;; delete old db first
+    (if (file-exists? poem-db-path)
+        (delete-file poem-db-path))
+
+    ;; insert poems to db    
+    ;; poem tang
+    (for-each
+     (lambda (elem)
+       (display
+        (format
+         "~d poems inserted from ~a\n"
+         (poem-json2db elem poem-db-path)
+         elem)))
+     (get-poet-filepath-list "tang"))
+
+    ;; poem songci
+    (for-each
+     (lambda (elem)
+       (display
+        (format
+         #f
+         "~d poems inserted from ~a\n"
+         (poem-json2db elem poem-db-path)
+         elem)))
+     (get-poet-filepath-list "songci"))
+    
+    (display (format "generated ~a\n" poem-db-path))))
+
+(define build-db
+  (lambda ()
+    (create-tmp-dir)
+    (download-poem-archive)
+    (generate-db)))
+
+(build-db)

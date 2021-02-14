@@ -1,6 +1,3 @@
-#!/usr/bin/guile -s
-!#
-
 (display "building c extensions ...")
 (newline)
 
