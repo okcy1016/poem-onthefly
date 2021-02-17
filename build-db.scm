@@ -8,6 +8,7 @@
 (define poem-songci-json-dir (string-append
                               tmp-dir
                               "/chinese-poetry-master/ci"))
+(define poem-archive-dir "./tmp/chinese-poetry-master")
 
 (define string-prefix?
   (lambda (x y)
@@ -48,14 +49,6 @@
     (if (not (file-exists? tmp-dir))
         (mkdir tmp-dir))))
 
-(load-shared-object "./net-helper.so")
-(define poem-download-archive
-  (foreign-procedure "download_poem_archive" (string string) int))
-
-(load-shared-object "./db-helper.so")
-(define poem-json2db
-  (foreign-procedure "read_poem_2_db" (string string) int))
-
 (define os-type
   (lambda ()
     (case (machine-type)
@@ -64,6 +57,21 @@
       [(i3nt ti3nt a6nt ta6nt) "windows"]
       [else "unknown"])))
 
+;; load c dynamic library
+(case (os-type)
+  ["windows" (begin
+               (load-shared-object "./net-helper.dll")
+               (load-shared-object "./db-helper.dll"))]
+  ["linux" (begin
+             (load-shared-object "./net-helper.so")
+             (load-shared-object "./db-helper.so"))])
+
+(define poem-download-archive
+  (foreign-procedure "download_poem_archive" (string string) int))
+
+(define poem-json2db
+  (foreign-procedure "read_poem_2_db" (string string) int))
+
 (define download-poem-archive
   (lambda ()
     ;; download poem if not exists
@@ -71,11 +79,14 @@
         (begin
           (display "first time use, downloading poems from GitHub ...")
           (newline)
-          (poem-download-archive poem-archive-uri poem-archive-filepath)
-          ;; extract archive
+          (poem-download-archive poem-archive-uri poem-archive-filepath)))))
+
+(define extract-poem-archive
+  (lambda ()
+    (if (not (file-exists? poem-archive-dir))
+        (begin
           (display "extracting archive ...")
           (newline)
-          ;; `ta6le` -> x86-64 linux; `nt` -> windows
           (if (string=? (os-type) "linux")
               (system (format #f "unzip -q ~a -d ~a" poem-archive-filepath tmp-dir))
               (begin
@@ -116,6 +127,7 @@
   (lambda ()
     (create-tmp-dir)
     (download-poem-archive)
+    (extract-poem-archive)
     (generate-db)))
 
 (build-db)
