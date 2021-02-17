@@ -2,7 +2,7 @@
 (newline)
 
 (define cmd-compile-net-helper "bash -c \"gcc `curl-config --cflags` net-helper.c `curl-config --libs` -shared -o net-helper.dll -fPIC\"")
-(define cmd-compile-db-helper "bash -c \"gcc `pkg-config --cflags sqlite3 json-c` db-helper.c `pkg-config --libs sqlite3 json-c` -shared -o db-helper.dll -fPIC\"")
+(define cmd-compile-db-helper "bash -c \"gcc `pkg-config --cflags sqlite3 json-c` db-helper.c sds.c `pkg-config --libs sqlite3 json-c` -shared -o db-helper.dll -fPIC\"")
 
 (define cmd-list
   (list cmd-compile-net-helper

@@ -1,7 +1,7 @@
 #include <stdio.h>
-#include <string.h>
 #include <sqlite3.h>
 #include <json-c/json.h>
+#include "sds.h"
 
 struct poem {
   const char* title;
@@ -13,7 +13,7 @@ int loop_poem_and_insert(json_object*, const char*);
 int read_poem_2_db(const char*, const char*);
 int insert_single_poem(sqlite3*, struct poem*);
 static int callback(void*, int, char**, char**);
-char* build_insert_sql(struct poem*);
+sds build_insert_sql(struct poem*);
 
 static int callback(void *NotUsed, int argc, char **argv, char **azColName){
   int i;
@@ -48,15 +48,11 @@ int loop_poem_and_insert(json_object* root, const char* db_path) {
   sqlite3* db;
   int poem_count;
   int para_count;
-  json_object* poem_elem;
-  json_object* tmp_elem;
-  json_object* para_elem;
   struct poem* poem = malloc(sizeof(struct poem));
   // must be initialized, or `\377\377\377` may appear
   // an uninitialized character array may preforms an out of bounds access
   // see https://stackoverflow.com/questions/43384991/different-ways-to-initialize-char-array-are-they-correct
-  // fixme: may encounter segment fault if the buffer size is too small
-  char buf[1024*32] = {0};
+  /* char buf[1024*32] = {0}; */
 
   poem_count = json_object_array_length(root);
 
@@ -77,34 +73,36 @@ int loop_poem_and_insert(json_object* root, const char* db_path) {
   sqlite3_exec(db, "BEGIN TRANSACTION", NULL, NULL, NULL);
   
   for(int i=0; i<poem_count; i++) {
-    poem_elem = json_object_array_get_idx(root, i);
+    json_object *poem_elem = json_object_array_get_idx(root, i);
     
-    json_object_object_get_ex(poem_elem, "title", &tmp_elem);
-    poem->title = json_object_get_string(tmp_elem);
+    json_object *poem_title_elem = json_object_object_get(poem_elem, "title");    
+    json_object *poem_author_elem = json_object_object_get(poem_elem, "author");
+    sds poem_title = sdsnew(json_object_get_string(poem_title_elem));
+    sds poem_author = sdsnew(json_object_get_string(poem_author_elem));
     
-    json_object_object_get_ex(poem_elem, "author", &tmp_elem);
-    poem->author = json_object_get_string(tmp_elem);
-    
-    json_object_object_get_ex(poem_elem, "paragraphs", &tmp_elem);
-    para_count = json_object_array_length(tmp_elem);
-    
+    json_object *poem_paragraphs_elem = json_object_object_get(poem_elem, "paragraphs");
+    sds poem_paragraphs = sdsempty();
+    para_count = json_object_array_length(poem_paragraphs_elem);
     for(int j=0; j<para_count; j++) {
-      para_elem = json_object_array_get_idx(tmp_elem, j);
-      strcat(buf, json_object_get_string(para_elem));
+      json_object *para_elem = json_object_array_get_idx(poem_paragraphs_elem, j);
+      poem_paragraphs = sdscat(poem_paragraphs, json_object_get_string(para_elem));
       if (j != (para_count - 1))
-        strcat(buf, "\n");
+        poem_paragraphs = sdscat(poem_paragraphs, "\n");
     }
-    poem->paragraphs = buf;
+    
+    poem->title = poem_title;
+    poem->author = poem_author;
+    poem->paragraphs = poem_paragraphs;
+
     insert_single_poem(db, poem);
-    memset(buf, 0, sizeof(buf));
+    sdsfree(poem_title);
+    sdsfree(poem_author);
+    sdsfree(poem_paragraphs);
   }
 
   // end sqlite transaction
   sqlite3_exec(db, "END TRANSACTION", NULL, NULL, NULL);
   
-  json_object_put(tmp_elem);
-  json_object_put(poem_elem);
-  json_object_put(para_elem);
   free(poem);
   sqlite3_close(db);
   return poem_count;
@@ -113,21 +111,21 @@ int loop_poem_and_insert(json_object* root, const char* db_path) {
 int insert_single_poem(sqlite3* db, struct poem* poem) {  
   char* zErrMsg = 0;
 
-  char* sql = build_insert_sql(poem);
+  sds sql = build_insert_sql(poem);
   /* printf("sql: %s\n", sql); */
   int rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
   if(rc != SQLITE_OK){
     fprintf(stderr, "sql error: %s\n", zErrMsg);
     sqlite3_free(zErrMsg);
   }
-  free(sql);
+  sdsfree(sql);
   
   return 0;
 }
 
-char* build_insert_sql(struct poem* poem) {
-  // fixme: may encounter segment fault if the memory size is too small
-  char* sql = malloc(1024*32);
-  sprintf(sql, "INSERT INTO poem VALUES (\"%s\", \"%s\", \"%s\");", poem->title, poem->author, poem->paragraphs);
+sds build_insert_sql(struct poem* poem) {
+  sds sql = sdsempty();
+  sql = sdscatprintf(sql, "INSERT INTO poem VALUES (\"%s\", \"%s\", \"%s\");", poem->title, poem->author, poem->paragraphs);
+  /* printf("%d\n", sdslen(sql)); */
   return sql;
 }
