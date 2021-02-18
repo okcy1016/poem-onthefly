@@ -20,12 +20,12 @@
                       (prefix? (fx+ i 1)))))))))
 
 (define get-poet-filename-list
-  (lambda (type)
+  (lambda (poem-type)
     (let ([filenames-in-dir (directory-list
-                             (case type
+                             (case poem-type
                                ["tang" poem-tang-json-dir]
                                ["songci" poem-songci-json-dir]))]
-          [filename-prefix (case type
+          [filename-prefix (case poem-type
                              ["tang" "poet.tang"]
                              ["songci" "ci.song"])])
       (filter (lambda (item)
@@ -33,9 +33,9 @@
               filenames-in-dir))))
 
 (define get-poet-filepath-list
-  (lambda (type)
-    (let ([poet-filename-list (get-poet-filename-list type)]
-          [dir (case type
+  (lambda (poem-type)
+    (let ([poet-filename-list (get-poet-filename-list poem-type)]
+          [dir (case poem-type
                  ["tang" poem-tang-json-dir]
                  ["songci" poem-songci-json-dir])])
       (map
@@ -67,10 +67,16 @@
              (load-shared-object "./db-helper.so"))])
 
 (define poem-download-archive
-  (foreign-procedure "download_poem_archive" (string string) int))
+  (foreign-procedure "download_poem_archive" (string int string) int))
 
 (define poem-json2db
-  (foreign-procedure "read_poem_2_db" (string string) int))
+  (foreign-procedure "read_poem_2_db" (string int string) int))
+
+(define poem-get-type-int
+  (lambda (poem-type)
+    (case poem-type
+      ["tang" 0]
+      ["songci" 1])))
 
 (define download-poem-archive
   (lambda ()
@@ -106,7 +112,7 @@
        (display
         (format
          "~d poems inserted from ~a\n"
-         (poem-json2db elem poem-db-path)
+         (poem-json2db elem (poem-get-type-int "tang") poem-db-path)
          elem)))
      (get-poet-filepath-list "tang"))
 
@@ -117,7 +123,7 @@
         (format
          #f
          "~d poems inserted from ~a\n"
-         (poem-json2db elem poem-db-path)
+         (poem-json2db elem (poem-get-type-int "songci") poem-db-path)
          elem)))
      (get-poet-filepath-list "songci"))
     

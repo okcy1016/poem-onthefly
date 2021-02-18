@@ -9,11 +9,11 @@ struct poem {
   const char* paragraphs;
 };
 
-int loop_poem_and_insert(json_object*, const char*);
-int read_poem_2_db(const char*, const char*);
-int insert_single_poem(sqlite3*, struct poem*);
+int loop_poem_and_insert(json_object*, sds, const char*);
+int read_poem_2_db(const char*, int, const char*);
+int insert_single_poem(sqlite3*, sds, struct poem*);
 static int callback(void*, int, char**, char**);
-sds build_insert_sql(struct poem*);
+sds build_insert_sql(sds, struct poem*);
 
 static int callback(void *NotUsed, int argc, char **argv, char **azColName){
   int i;
@@ -24,7 +24,7 @@ static int callback(void *NotUsed, int argc, char **argv, char **azColName){
   return 0;
 }
 
-int read_poem_2_db(const char* jsonpath, const char* dbpath) {
+int read_poem_2_db(const char* jsonpath, int poem_type, const char* dbpath) {
   /* char* is a mutable pointer to a mutable character/string. */
 
   /* const char* is a mutable pointer to an immutable character/string. */
@@ -35,16 +35,30 @@ int read_poem_2_db(const char* jsonpath, const char* dbpath) {
   /* char* const is an immutable pointer (it cannot point to any other location) */
   /* but the contents of location at which it points are mutable. */
 
-  /* const char* const is an immutable pointer to an immutable character/string. */    
+  /* const char* const is an immutable pointer to an immutable character/string. */
+  sds table = sdsempty();
+  
+  switch(poem_type) {
+  case 0:
+    table = sdscat(table, "tang");
+    break;
+  case 1:
+    table = sdscat(table, "songci");
+    break;
+  default:
+    table = sdscat(table, "default");
+    break;
+  }
+  
   json_object* root = json_object_from_file(jsonpath);
-
-  int poem_count = loop_poem_and_insert(root, dbpath);
+  int poem_count = loop_poem_and_insert(root, table, dbpath);
   
   json_object_put(root);
+  sdsfree(table);
   return poem_count;
 }
 
-int loop_poem_and_insert(json_object* root, const char* db_path) {
+int loop_poem_and_insert(json_object* root, sds table, const char* db_path) {
   sqlite3* db;
   int poem_count;
   int para_count;
@@ -65,8 +79,9 @@ int loop_poem_and_insert(json_object* root, const char* db_path) {
   }
 
   // create `poem` table
-  const char sql[256] = "CREATE TABLE poem (title string, author string, paragraphs string);";
-  sqlite3_exec(db, sql, callback, 0, NULL);
+  sds create_table_sql = sdscatprintf(sdsempty(), "CREATE TABLE %s (title string, author string, paragraphs string);", table);
+  sqlite3_exec(db, create_table_sql, callback, 0, NULL);
+  sdsfree(create_table_sql);
 
   // wrap in one transaction, speed up bulk insert!
   // see https://stackoverflow.com/questions/1711631/improve-insert-per-second-performance-of-sqlite
@@ -75,7 +90,7 @@ int loop_poem_and_insert(json_object* root, const char* db_path) {
   for(int i=0; i<poem_count; i++) {
     json_object *poem_elem = json_object_array_get_idx(root, i);
     
-    json_object *poem_title_elem = json_object_object_get(poem_elem, "title");    
+    json_object *poem_title_elem = json_object_object_get(poem_elem, "title");
     json_object *poem_author_elem = json_object_object_get(poem_elem, "author");
     sds poem_title = sdsnew(json_object_get_string(poem_title_elem));
     sds poem_author = sdsnew(json_object_get_string(poem_author_elem));
@@ -94,7 +109,7 @@ int loop_poem_and_insert(json_object* root, const char* db_path) {
     poem->author = poem_author;
     poem->paragraphs = poem_paragraphs;
 
-    insert_single_poem(db, poem);
+    insert_single_poem(db, table, poem);
     sdsfree(poem_title);
     sdsfree(poem_author);
     sdsfree(poem_paragraphs);
@@ -108,10 +123,10 @@ int loop_poem_and_insert(json_object* root, const char* db_path) {
   return poem_count;
 }
 
-int insert_single_poem(sqlite3* db, struct poem* poem) {  
+int insert_single_poem(sqlite3* db, sds table, struct poem* poem) {  
   char* zErrMsg = 0;
 
-  sds sql = build_insert_sql(poem);
+  sds sql = build_insert_sql(table, poem);
   /* printf("sql: %s\n", sql); */
   int rc = sqlite3_exec(db, sql, callback, 0, &zErrMsg);
   if(rc != SQLITE_OK){
@@ -123,9 +138,9 @@ int insert_single_poem(sqlite3* db, struct poem* poem) {
   return 0;
 }
 
-sds build_insert_sql(struct poem* poem) {
+sds build_insert_sql(sds table, struct poem* poem) {
   sds sql = sdsempty();
-  sql = sdscatprintf(sql, "INSERT INTO poem VALUES (\"%s\", \"%s\", \"%s\");", poem->title, poem->author, poem->paragraphs);
+  sql = sdscatprintf(sql, "INSERT INTO %s VALUES (\"%s\", \"%s\", \"%s\");", table, poem->title, poem->author, poem->paragraphs);
   /* printf("%d\n", sdslen(sql)); */
   return sql;
 }
