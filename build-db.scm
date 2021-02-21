@@ -111,7 +111,7 @@
      (lambda (elem)
        (display
         (format
-         "~d poems inserted from ~a\n"
+         "~d poems inserted from ~a to 'tang'\n"
          (poem-json2db elem (poem-get-type-int "tang") poem-db-path)
          elem)))
      (get-poet-filepath-list "tang"))
@@ -122,7 +122,7 @@
        (display
         (format
          #f
-         "~d poems inserted from ~a\n"
+         "~d poems inserted from ~a to 'songci'\n"
          (poem-json2db elem (poem-get-type-int "songci") poem-db-path)
          elem)))
      (get-poet-filepath-list "songci"))

@@ -3,13 +3,16 @@
 #include <json-c/json.h>
 #include "sds.h"
 
+#define POEM_TANG 0
+#define POEM_SONGCI 1
+
 struct poem {
   const char* title;
   const char* author;
   const char* paragraphs;
 };
 
-int loop_poem_and_insert(json_object*, sds, const char*);
+int loop_poem_and_insert(json_object*, int, const char*);
 int read_poem_2_db(const char*, int, const char*);
 int insert_single_poem(sqlite3*, sds, struct poem*);
 static int callback(void*, int, char**, char**);
@@ -36,38 +39,34 @@ int read_poem_2_db(const char* jsonpath, int poem_type, const char* dbpath) {
   /* but the contents of location at which it points are mutable. */
 
   /* const char* const is an immutable pointer to an immutable character/string. */
-  sds table = sdsempty();
-  
-  switch(poem_type) {
-  case 0:
-    table = sdscat(table, "tang");
-    break;
-  case 1:
-    table = sdscat(table, "songci");
-    break;
-  default:
-    table = sdscat(table, "default");
-    break;
-  }
   
   json_object* root = json_object_from_file(jsonpath);
-  int poem_count = loop_poem_and_insert(root, table, dbpath);
+  int poem_count = loop_poem_and_insert(root, poem_type, dbpath);
   
   json_object_put(root);
-  sdsfree(table);
   return poem_count;
 }
 
-int loop_poem_and_insert(json_object* root, sds table, const char* db_path) {
+int loop_poem_and_insert(json_object* root, int poem_type, const char* db_path) {
   sqlite3* db;
   int poem_count;
   int para_count;
   struct poem* poem = malloc(sizeof(struct poem));
-  // must be initialized, or `\377\377\377` may appear
-  // an uninitialized character array may preforms an out of bounds access
-  // see https://stackoverflow.com/questions/43384991/different-ways-to-initialize-char-array-are-they-correct
-  /* char buf[1024*32] = {0}; */
+  sds table; 
 
+  table = sdsempty();
+  switch(poem_type) {
+  case POEM_TANG:
+    table = sdscat(table, "tang");
+    break;
+  case POEM_SONGCI:
+    table = sdscat(table, "songci");
+    break;
+  default:
+    table = sdscat(table, "unknown");
+    break;
+  }
+  
   poem_count = json_object_array_length(root);
 
   // open db
@@ -89,8 +88,12 @@ int loop_poem_and_insert(json_object* root, sds table, const char* db_path) {
   
   for(int i=0; i<poem_count; i++) {
     json_object *poem_elem = json_object_array_get_idx(root, i);
-    
-    json_object *poem_title_elem = json_object_object_get(poem_elem, "title");
+
+    json_object *poem_title_elem;
+    if (poem_type == POEM_SONGCI)
+      poem_title_elem = json_object_object_get(poem_elem, "rhythmic");
+    else
+      poem_title_elem = json_object_object_get(poem_elem, "title");
     json_object *poem_author_elem = json_object_object_get(poem_elem, "author");
     sds poem_title = sdsnew(json_object_get_string(poem_title_elem));
     sds poem_author = sdsnew(json_object_get_string(poem_author_elem));
