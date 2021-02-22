@@ -9,6 +9,8 @@
                               tmp-dir
                               "/chinese-poetry-master/ci"))
 (define poem-archive-dir "./tmp/chinese-poetry-master")
+(define poem-type-tang 0)
+(define poem-type-songci 1)
 
 (define string-prefix?
   (lambda (x y)
@@ -67,16 +69,10 @@
              (load-shared-object "./db-helper.so"))])
 
 (define poem-download-archive
-  (foreign-procedure "download_poem_archive" (string int string) int))
+  (foreign-procedure "download_poem_archive" (string string) int))
 
 (define poem-json2db
   (foreign-procedure "read_poem_2_db" (string int string) int))
-
-(define poem-get-type-int
-  (lambda (poem-type)
-    (case poem-type
-      ["tang" 0]
-      ["songci" 1])))
 
 (define download-poem-archive
   (lambda ()
@@ -112,7 +108,7 @@
        (display
         (format
          "~d poems inserted from ~a to 'tang'\n"
-         (poem-json2db elem (poem-get-type-int "tang") poem-db-path)
+         (poem-json2db elem poem-type-tang poem-db-path)
          elem)))
      (get-poet-filepath-list "tang"))
 
@@ -123,7 +119,7 @@
         (format
          #f
          "~d poems inserted from ~a to 'songci'\n"
-         (poem-json2db elem (poem-get-type-int "songci") poem-db-path)
+         (poem-json2db elem poem-type-songci poem-db-path)
          elem)))
      (get-poet-filepath-list "songci"))
     
