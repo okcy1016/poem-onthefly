@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <!-- import CSS -->
+    <link rel="stylesheet" href="css/ele_ui_chalk.css">
+    <link rel="stylesheet" href="css/custom.css">
+
+    <!-- stackedit CSS -->
+    <link rel="stylesheet" href="css/stackedit.css"/>
+  </head>
+  <body>
+
+
+    <div id="app">
+      <el-menu :default-active="activeIndex" class="el-menu" mode="horizontal" @select="handleSelect">
+	<el-menu-item index="1"><i class="el-icon-tickets"></i>简介</el-menu-item>
+	<el-submenu index="2">
+	  <template slot="title"><i class="el-icon-setting"></i>配置</template>
+	  <el-menu-item index="2-1">字体</el-menu-item>
+	  <el-menu-item index="2-2">背景图片</el-menu-item>
+	  <el-menu-item index="2-3">定时间隔</el-menu-item>
+	  <el-menu-item index="2-4">是否保持后台服务</el-menu-item>
+	</el-submenu>
+      </el-menu>
+      <div id="intro">
+	<div class="stackedit__html">
+	  <h3 id="poetry-desktop"><em>上方菜单可进行自定义配置</em></h3>
+	  <h1 id="欢迎使用诗词桌面！">欢迎使用诗词桌面！</h1>
+	  <h1 id="简介">简介</h1>
+	  <p>本程序能够自动地、定时地从网路上随机获取一首唐、宋诗或宋词，并将文本整合在背景图片上，最后自动设置为壁纸。</p>
+	  <h1 id="使用效果">使用效果</h1>
+	  <p><img src="images/show_case_0.png" alt="alt text"><br>
+	    <img src="images/show_case_1.png" alt="alt text"></p>
+	  <h1 id="project-location">Project location</h1>
+	  <p>项目位于: <a href="https://github.com/okcy1016/poetry-desktop/">https://github.com/okcy1016/poetry-desktop/</a></p>
+	  <p>感谢您的 Star ( •⌄• ू )✧ ！</p>
+	  <h1 id="致谢">致谢</h1>
+	  <p>感谢以下项目的贡献者：</p>
+	  <ol>
+	    <li>
+	      <p>中华古诗词数据库<br>
+		<a href="https://github.com/chinese-poetry/chinese-poetry">https://github.com/chinese-poetry/chinese-poetry</a></p>
+	    </li>
+	    <li>
+	      <p>A simple, fast, and fun package for building command line apps in Go<br>
+		<a href="https://github.com/urfave/cli">https://github.com/urfave/cli</a></p>
+	    </li>
+	    <li>
+	      <p>ImageMagick 7<br>
+		<a href="https://github.com/ImageMagick/ImageMagick">https://github.com/ImageMagick/ImageMagick</a></p>
+	    </li>
+	    <li>
+	      <p>Set the desktop wallpaper on Windows<br>
+		<a href="https://github.com/sindresorhus/win-wallpaper">https://github.com/sindresorhus/win-wallpaper</a></p>
+	    </li>
+	  </ol>
+	</div>
+      </div>
+
+      <div id="fontSlider">
+	<template>
+	  <div class="block">
+	    <el-button type="primary" @click.native="saveAndRestartService">保存配置并重启服务</el-button>
+	    <h2>字体大小</h2>
+	    <el-slider
+	      v-model="fontSize"
+	      show-input
+	      @change="fontSizeChanged">
+	    </el-slider>
+	    <h2>字体颜色(rgba)</h2>
+	    <el-color-picker
+	      v-model="fontColor"
+	      show-alpha
+	      :predefine="predefineColors"
+	      @change="fontColorChanged">
+	    </el-color-picker>
+	  </div>
+	</template>
+      </div>
+
+      <div id="imgSel" class="block">
+	<template>
+	  <el-button type="primary" @click.native="saveAndRestartService">保存配置并重启服务</el-button>
+	  <h3>选择背景图片</h3>
+	  <el-select v-model="imgSelVal" placeholder="选择背景图片" @change="imgSelChgd">
+	    <el-option
+	      v-for="item in imgSelOptions"
+	      :key="item.value"
+	      :value="item.value"
+	      >
+	    </el-option>
+	  </el-select>
+
+	  <h3>预览</h3>
+	  <p>0.jpg</p>
+	  <img src="images/0.jpg" alt="0.jpg">
+	  <p>1.jpg</p>
+	  <img src="images/1.jpg" alt="1.jpg">
+	  <p>2.jpg</p>
+	  <img src="images/2.jpg" alt="2.jpg">
+	  <p>3.jpg</p>
+	  <img src="images/3.jpg" alt="3.jpg">
+	  <p>4.jpg</p>
+	  <img src="images/4.jpg" alt="4.jpg">
+	  <p>5.jpg</p>
+	  <img src="images/5.jpg" alt="5.jpg">
+	  <p>6.jpg</p>
+	  <img src="images/6.jpg" alt="6.jpg">
+	  <p>7.jpg</p>
+	  <img src="images/7.jpg" alt="7.jpg">
+	  <p>8.jpg</p>
+	  <img src="images/8.jpg" alt="8.jpg">
+	  <p>9.jpg</p>
+	  <img src="images/9.jpg" alt="9.jpg">
+	  <p>10.jpg</p>
+	  <img src="images/10.jpg" alt="10.jpg">
+	  <p>11.jpg</p>
+	  <img src="images/11.jpg" alt="11.jpg">
+	  <p>12.jpg</p>
+	  <img src="images/12.jpg" alt="12.jpg">
+	  <p>13.jpg</p>
+	  <img src="images/13.jpg" alt="13.jpg">
+	  <p>14.jpg</p>
+	  <img src="images/14.jpg" alt="14.jpg">
+	  <p>15.jpg</p>
+	  <img src="images/15.jpg" alt="15.jpg">
+	</template>
+      </div>
+      
+      <div class="block" id="intervalSlider">
+	<el-button type="primary" @click.native="saveAndRestartService">保存配置并重启服务</el-button>
+	<h2>定时间隔</h2>
+	<el-slider v-model="interval" :step="1" show-input show-stops :min="1" :max="24" @change="intervalChanged">
+	</el-slider>
+	<p>单位：小时</p>
+      </div>
+
+      <div id="chkBox0" class="block">
+	<el-button type="primary" @click.native="saveAndRestartService">保存配置并重启服务</el-button><br><br>
+	<el-checkbox v-model="chkBox0Chked" label="是否在关闭主界面之后保持服务运行" @change="chkBox0Chgd"></el-checkbox>
+	<div class="stackedit__html"><h4 id="若选中此项，在主界面关闭后，诗词桌面的服务进程并不会随之关闭，如需手动关闭，请于任务管理器中结束-poetry_cli.exe-进程。">若选中此项，在主界面关闭后，诗词桌面的服务进程并不会随之关闭，如需手动关闭，请于任务管理器中结束 <code>poetry_cli.exe</code> 进程。<br><br>如若在再次打开程序前未结束 <code>poetry_cli.exe</code> 进程，此时将存在两个后台服务进程。</h4>
+	</div>
+      </div>
+
+    </div>
+ 
+      
+  </body>
+  <!-- import Vue before Element -->
+  <script src="js/vue_min.js"></script>
+  <!-- import JavaScript -->
+  <script src="js/ele_ui.js"></script>
+  
+  <!-- load config script -->
+  <script src="js/config.js"></script>
+  
+  <script src="js/main.js"></script>
+</html>
